@@ -12,10 +12,25 @@ struct Name(String);
 struct FirstName(String);
 
 fn add_people(mut commands: Commands) {
-    commands.spawn().insert(Person).insert(Name("Elaina Proctor".to_string())).insert(FirstName("Proctor".to_string()));
-    commands.spawn().insert(Person).insert(Name("Renzo Hume".to_string())).insert(FirstName("Hume".to_string()));
-    commands.spawn().insert(Person).insert(FirstName("Nieve".to_string())).insert(Name("Zayna Nieves".to_string()));
-    commands.spawn().insert(Person).insert(FirstName("ABC".to_string()));
+    commands
+        .spawn()
+        .insert(Person)
+        .insert(Name("Elaina Proctor".to_string()))
+        .insert(FirstName("Proctor".to_string()));
+    commands
+        .spawn()
+        .insert(Person)
+        .insert(Name("Renzo Hume".to_string()))
+        .insert(FirstName("Hume".to_string()));
+    commands
+        .spawn()
+        .insert(Person)
+        .insert(FirstName("Nieve".to_string()))
+        .insert(Name("Zayna Nieves".to_string()));
+    commands
+        .spawn()
+        .insert(Person)
+        .insert(FirstName("ABC".to_string()));
 }
 
 fn greet_people(query: Query<&FirstName, With<Name>>) {
@@ -28,8 +43,7 @@ pub struct HelloPlugin;
 
 impl Plugin for HelloPlugin {
     fn build(&self, app: &mut App) {
-        app.add_startup_system(add_people)
-            .add_system(greet_people);
+        app.add_startup_system(add_people).add_system(greet_people);
     }
 }
 
