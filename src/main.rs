@@ -2,11 +2,13 @@
 
 pub mod people;
 
-use std::string;
+use futures_lite::future;
 
-use crate::people::people::*;
+// use std::string;
 
-use bevy::{prelude::*, winit::WinitSettings};
+// use crate::people::people::*;
+
+use bevy::{prelude::*, winit::WinitSettings, tasks::{AsyncComputeTaskPool, Task},};
 
 #[derive(Component)]
 struct Person;
@@ -20,7 +22,7 @@ struct ButtonDownload;
 struct FirstName(String);
 
 impl Plugin for ButtonDownload {
-    fn build(&self, app: &mut App) {
+    fn build(&self, _app: &mut App) {
         
     }
 }
@@ -47,7 +49,13 @@ use octocrab::Error;
 const NORMAL_BUTTON: Color = Color::rgb(0.15, 0.15, 0.15);
 const HOVERED_BUTTON: Color = Color::rgb(0.25, 0.25, 0.25);
 const PRESSED_BUTTON: Color = Color::rgb(0.35, 0.75, 0.35);
-const GITHUB_PATH: &str = "https://github.com/X-R-G-B/Artena";
+// const GITHUB_PATH: &str = "https://github.com/X-R-G-B/Artena";
+
+#[derive(Component)]
+pub struct GithubReleaseDownloader;
+
+#[derive(Component)]
+pub struct GithubReleaseResult(Task<Result<Release, Error>>);
 
 async fn get_latest() -> Result<Release, Error> {
     println!("Request API");
@@ -56,18 +64,18 @@ async fn get_latest() -> Result<Release, Error> {
         .releases()
         .get_latest()
         .await?;
-    
     println!("Je suis la valeur : ");
     println!("{:?}", release);
     return Ok(release);
 }
 
-async fn button_system(
+fn button_system(
     mut interaction_query: Query<'_, '_, 
         (&Interaction, &mut UiColor, &Children),
         (Changed<Interaction>, With<Button>),
     >,
     mut text_query: Query<'_, '_, &mut Text>,
+    mut commands: Commands,
 ) {
     for (interaction, mut color, children) in &mut interaction_query {
         let mut text = text_query.get_mut(children[0]).unwrap();
@@ -75,7 +83,7 @@ async fn button_system(
             Interaction::Clicked => {
                 text.sections[0].value = "Press".to_string();
                 *color = PRESSED_BUTTON.into();
-                get_latest();
+                commands.spawn().insert(GithubReleaseDownloader);
                 println!("salut");
             }
             Interaction::Hovered => {
@@ -90,6 +98,28 @@ async fn button_system(
     }
 }
 
+fn downloader_system_spawn(mut commands: Commands, query: Query<&GithubReleaseDownloader>, thread_pool: Res<AsyncComputeTaskPool>) {
+    if query.into_iter().len() >= 1 {
+        let task = thread_pool.spawn(async move {
+            get_latest().await
+        });
+        commands.spawn().insert(GithubReleaseResult(task));
+    }
+}
+
+fn handle_tasks(
+    mut commands: Commands,
+    mut transform_tasks: Query<(Entity, &mut GithubReleaseResult)>,
+) {
+    for (entity, mut task) in transform_tasks.iter_mut() {
+        if let Some(release) = future::block_on(future::poll_once(&mut task.0)) {
+            if release.is_ok() {
+                println!("OKKKK");
+            }
+            commands.entity(entity).remove::<GithubReleaseResult>();
+        }
+    }
+}
 
 
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
@@ -110,16 +140,16 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
             color: NORMAL_BUTTON.into(),
             ..default()
         })
-        .with_children(|parent| {
-            parent.spawn_bundle(TextBundle::from_section(
+    .with_children(|parent| {
+        parent.spawn_bundle(TextBundle::from_section(
                 "Button",
                 TextStyle {
                     font: asset_server.load("fonts/FiraSans-Bold.ttf"),
                     font_size: 40.0,
                     color: Color::rgb(0.9, 0.9, 0.9),
                 },
-            ));
-        });
+                ));
+    });
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -146,5 +176,7 @@ fn main() {
         .insert_resource(WinitSettings::desktop_app())
         .add_startup_system(setup)
         .add_system(button_system)
+        .add_startup_system(downloader_system_spawn)
+        .add_system(handle_tasks)
         .run();
 }
