@@ -23,7 +23,7 @@ struct FirstName(String);
 
 impl Plugin for ButtonDownload {
     fn build(&self, _app: &mut App) {
-        
+
     }
 }
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -71,12 +71,12 @@ async fn get_latest() -> Result<Release, Error> {
 
 fn button_system(
     mut interaction_query: Query<'_, '_, 
-        (&Interaction, &mut UiColor, &Children),
-        (Changed<Interaction>, With<Button>),
+    (&Interaction, &mut UiColor, &Children),
+    (Changed<Interaction>, With<Button>),
     >,
     mut text_query: Query<'_, '_, &mut Text>,
     mut commands: Commands,
-) {
+    ) {
     for (interaction, mut color, children) in &mut interaction_query {
         let mut text = text_query.get_mut(children[0]).unwrap();
         match *interaction {
@@ -98,7 +98,8 @@ fn button_system(
     }
 }
 
-fn downloader_system_spawn(mut commands: Commands, query: Query<&GithubReleaseDownloader>, thread_pool: Res<AsyncComputeTaskPool>) {
+fn downloader_system_spawn(mut commands: Commands, query: Query<&GithubReleaseDownloader>) {
+    let thread_pool = AsyncComputeTaskPool::get();
     if query.into_iter().len() >= 1 {
         let task = thread_pool.spawn(async move {
             get_latest().await
@@ -110,8 +111,8 @@ fn downloader_system_spawn(mut commands: Commands, query: Query<&GithubReleaseDo
 fn handle_tasks(
     mut commands: Commands,
     mut transform_tasks: Query<(Entity, &mut GithubReleaseResult)>,
-) {
-    for (entity, mut task) in transform_tasks.iter_mut() {
+    ) {
+    for (entity, mut task) in &mut transform_tasks {
         if let Some(release) = future::block_on(future::poll_once(&mut task.0)) {
             if release.is_ok() {
                 println!("OKKKK");
@@ -140,16 +141,16 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
             color: NORMAL_BUTTON.into(),
             ..default()
         })
-    .with_children(|parent| {
-        parent.spawn_bundle(TextBundle::from_section(
-                "Button",
-                TextStyle {
-                    font: asset_server.load("fonts/FiraSans-Bold.ttf"),
-                    font_size: 40.0,
-                    color: Color::rgb(0.9, 0.9, 0.9),
-                },
-                ));
-    });
+        .with_children(|parent| {
+            parent.spawn_bundle(TextBundle::from_section(
+                    "Button",
+                    TextStyle {
+                        font: asset_server.load("fonts/FiraSans-Bold.ttf"),
+                        font_size: 40.0,
+                        color: Color::rgb(0.9, 0.9, 0.9),
+                    },
+            ));
+        });
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -175,8 +176,8 @@ fn main() {
         // Only run the app when there is user input. This will significantly reduce CPU/GPU use.
         .insert_resource(WinitSettings::desktop_app())
         .add_startup_system(setup)
-        .add_system(button_system)
         .add_startup_system(downloader_system_spawn)
+        .add_system(button_system)
         .add_system(handle_tasks)
         .run();
 }
