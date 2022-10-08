@@ -42,9 +42,10 @@ impl Plugin for ButtonDownload {
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-use octocrab;
+use octocrab::{self, GitHubError};
 use octocrab::models::repos::Release;
 use octocrab::Error;
+use bevy::tasks::TaskPool;
 
 const NORMAL_BUTTON: Color = Color::rgb(0.15, 0.15, 0.15);
 const HOVERED_BUTTON: Color = Color::rgb(0.25, 0.25, 0.25);
@@ -59,14 +60,21 @@ pub struct GithubReleaseResult(Task<Result<Release, Error>>);
 
 async fn get_latest() -> Result<Release, Error> {
     println!("Request API");
-    let release = octocrab::instance()
-        .repos("X-R-G-B", "Artena")
-        .releases()
-        .get_latest()
-        .await?;
-    println!("Je suis la valeur : ");
-    println!("{:?}", release);
-    return Ok(release);
+    let octo_inst = octocrab::instance();
+    println!("Crash into call instance octocrab");
+        // .await?;
+        // .releases()
+        // .get_latest()
+    let repos = octo_inst.repos("X-R-G-B", "Artena");
+    println!("Crash into call repos");
+    let releases = repos.releases();
+    println!("Crash into call releases");
+    let latest = releases.get_latest();
+    println!("Crash into call latest");
+    let await_var = latest.await?;
+    println!("Crash into call await");
+    println!("Pas de crash OK!");
+    return Ok(await_var);
 }
 
 fn button_system(
@@ -76,7 +84,7 @@ fn button_system(
     >,
     mut text_query: Query<'_, '_, &mut Text>,
     mut commands: Commands,
-    ) {
+) {
     for (interaction, mut color, children) in &mut interaction_query {
         let mut text = text_query.get_mut(children[0]).unwrap();
         match *interaction {
@@ -99,13 +107,18 @@ fn button_system(
 }
 
 fn downloader_system_spawn(mut commands: Commands, query: Query<&GithubReleaseDownloader>) {
-    let thread_pool = AsyncComputeTaskPool::get();
+    println!("Entering download");
+    let thread_pool = TaskPool::new();
+    println!("Panick at thread pool : NO");
     if query.into_iter().len() >= 1 {
-        let task = thread_pool.spawn(async move {
+        let task = thread_pool.spawn(async {
             get_latest().await
         });
+        println!("Panick at task : NO");
         commands.spawn().insert(GithubReleaseResult(task));
+        println!("Panick at commands : NO");
     }
+    println!("Everything OK !");
 }
 
 fn handle_tasks(
@@ -169,14 +182,17 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-/// 
+
+
+
+// #[tokio::main]
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
         // Only run the app when there is user input. This will significantly reduce CPU/GPU use.
         .insert_resource(WinitSettings::desktop_app())
         .add_startup_system(setup)
-        .add_startup_system(downloader_system_spawn)
+        .add_system(downloader_system_spawn)
         .add_system(button_system)
         .add_system(handle_tasks)
         .run();
