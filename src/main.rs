@@ -61,17 +61,9 @@ async fn get_latest() -> Result<Release, Error> {
     println!("Request API");
     let octo_inst = octocrab::instance();
     println!("Crash into call instance octocrab");
-    let repos = octo_inst.repos("X-R-G-B", "Artena").releases().get_latest().await?;
-    // println!("Crash into call repos");
-    // let releases = repos.releases();
-    // println!("Crash into call releases");
-    // let latest = releases.get_latest();
-    // println!("Crash into call latest");
-    // let await_var = latest.await?;
-    println!("Crash into call await");
-    println!("Pas de crash OK!");
-    println!("{:?}", repos);
-    return Ok(repos);
+    let releases = octo_inst.repos("X-R-G-B", "Artena").releases().get_latest().await?;
+    println!("{:?}", releases);
+    return Ok(releases);
 }
 
 fn button_system(
@@ -80,7 +72,6 @@ fn button_system(
     (Changed<Interaction>, With<Button>),
     >,
     mut text_query: Query<'_, '_, &mut Text>,
-    mut commands: Commands,
     handle: ResMut<tokio::runtime::Handle>
 ) {
     for (interaction, mut color, children) in &mut interaction_query {
