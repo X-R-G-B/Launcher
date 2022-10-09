@@ -6,7 +6,7 @@ pub mod people;
 
 // use crate::people::people::*;
 
-use bevy::{prelude::*, winit::WinitSettings, tasks::Task,};
+use bevy::{prelude::*, tasks::Task, winit::WinitSettings};
 
 use tokio;
 
@@ -22,9 +22,7 @@ struct ButtonDownload;
 struct FirstName(String);
 
 impl Plugin for ButtonDownload {
-    fn build(&self, _app: &mut App) {
-
-    }
+    fn build(&self, _app: &mut App) {}
 }
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -61,18 +59,24 @@ async fn get_latest() -> Result<Release, Error> {
     println!("Request API");
     let octo_inst = octocrab::instance();
     println!("Crash into call instance octocrab");
-    let releases = octo_inst.repos("X-R-G-B", "Artena").releases().get_latest().await?;
+    let releases = octo_inst
+        .repos("X-R-G-B", "Artena")
+        .releases()
+        .get_latest()
+        .await?;
     println!("{:?}", releases);
     return Ok(releases);
 }
 
 fn button_system(
-    mut interaction_query: Query<'_, '_, 
-    (&Interaction, &mut UiColor, &Children),
-    (Changed<Interaction>, With<Button>),
+    mut interaction_query: Query<
+        '_,
+        '_,
+        (&Interaction, &mut UiColor, &Children),
+        (Changed<Interaction>, With<Button>),
     >,
     mut text_query: Query<'_, '_, &mut Text>,
-    handle: ResMut<tokio::runtime::Handle>
+    handle: ResMut<tokio::runtime::Handle>,
 ) {
     for (interaction, mut color, children) in &mut interaction_query {
         let mut text = text_query.get_mut(children[0]).unwrap();
@@ -80,9 +84,7 @@ fn button_system(
             Interaction::Clicked => {
                 text.sections[0].value = "Press".to_string();
                 *color = PRESSED_BUTTON.into();
-                handle.spawn(async move {
-                    get_latest().await
-                });
+                handle.spawn(async move { get_latest().await });
                 println!("salut");
             }
             Interaction::Hovered => {
@@ -96,7 +98,6 @@ fn button_system(
         }
     }
 }
-
 
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     // ui camera
@@ -118,12 +119,12 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         })
         .with_children(|parent| {
             parent.spawn_bundle(TextBundle::from_section(
-                    "Button",
-                    TextStyle {
-                        font: asset_server.load("fonts/FiraSans-Bold.ttf"),
-                        font_size: 40.0,
-                        color: Color::rgb(0.9, 0.9, 0.9),
-                    },
+                "Button",
+                TextStyle {
+                    font: asset_server.load("fonts/FiraSans-Bold.ttf"),
+                    font_size: 40.0,
+                    color: Color::rgb(0.9, 0.9, 0.9),
+                },
             ));
         });
 }
@@ -144,8 +145,6 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
 
 #[tokio::main]
 async fn main() {
