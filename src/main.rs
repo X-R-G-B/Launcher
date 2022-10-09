@@ -61,17 +61,17 @@ async fn get_latest() -> Result<Release, Error> {
     println!("Request API");
     let octo_inst = octocrab::instance();
     println!("Crash into call instance octocrab");
-    let repos = octo_inst.repos("X-R-G-B", "Artena");
-    println!("Crash into call repos");
-    let releases = repos.releases();
-    println!("Crash into call releases");
-    let latest = releases.get_latest();
-    println!("Crash into call latest");
-    let await_var = latest.await?;
+    let repos = octo_inst.repos("X-R-G-B", "Artena").releases().get_latest().await?;
+    // println!("Crash into call repos");
+    // let releases = repos.releases();
+    // println!("Crash into call releases");
+    // let latest = releases.get_latest();
+    // println!("Crash into call latest");
+    // let await_var = latest.await?;
     println!("Crash into call await");
     println!("Pas de crash OK!");
-    println!("{:?}", await_var);
-    return Ok(await_var);
+    println!("{:?}", repos);
+    return Ok(repos);
 }
 
 fn button_system(
@@ -81,6 +81,7 @@ fn button_system(
     >,
     mut text_query: Query<'_, '_, &mut Text>,
     mut commands: Commands,
+    handle: ResMut<tokio::runtime::Handle>
 ) {
     for (interaction, mut color, children) in &mut interaction_query {
         let mut text = text_query.get_mut(children[0]).unwrap();
@@ -88,7 +89,9 @@ fn button_system(
             Interaction::Clicked => {
                 text.sections[0].value = "Press".to_string();
                 *color = PRESSED_BUTTON.into();
-                commands.spawn().insert(GithubReleaseDownloader);
+                handle.spawn(async move {
+                    get_latest().await
+                });
                 println!("salut");
             }
             Interaction::Hovered => {
@@ -103,14 +106,6 @@ fn button_system(
     }
 }
 
-fn downloader_system_spawn(mut commands: Commands, mut query: Query<Entity, &GithubReleaseDownloader>, handle: ResMut<tokio::runtime::Handle>) {
-    handle.spawn(async move {
-        get_latest().await
-    });
-    for entity in &mut query {
-        commands.entity(entity).despawn();
-    }
-}
 
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     // ui camera
@@ -170,7 +165,6 @@ async fn main() {
         .insert_resource(WinitSettings::desktop_app())
         .insert_resource(handle)
         .add_startup_system(setup)
-        .add_system(downloader_system_spawn)
         .add_system(button_system)
         .run();
 }
