@@ -1,35 +1,22 @@
-#![allow(clippy::too_many_arguments, clippy::type_complexity)]
+pub mod const_file;
 
-pub mod people;
-pub mod const;
-
-use const::*;
+use const_file::*;
 
 use bevy::{prelude::*, tasks::Task, winit::WinitSettings};
 
-use tokio;
-
 use octocrab::{models::repos::Release, Error};
-
-#[derive(Component)]
-struct Person;
-
-#[derive(Component)]
-struct Name(String);
 
 struct ButtonDownload;
 
-#[derive(Component)]
-struct FirstName(String);
-
-impl Plugin for ButtonDownload {
-    fn build(&self, _app: &mut App) {}
-}
 #[derive(Component)]
 pub struct GithubReleaseDownloader;
 
 #[derive(Component)]
 pub struct GithubReleaseResult(Task<Result<Release, Error>>);
+
+impl Plugin for ButtonDownload {
+    fn build(&self, _app: &mut App) {}
+}
 
 async fn get_latest() -> Result<Release, Error> {
     println!("Request API");
@@ -41,7 +28,7 @@ async fn get_latest() -> Result<Release, Error> {
         .get_latest()
         .await?;
     println!("{:?}", releases);
-    return Ok(releases);
+    Ok(releases)
 }
 
 fn button_system(
@@ -59,9 +46,8 @@ fn button_system(
         match *interaction {
             Interaction::Clicked => {
                 text.sections[0].value = "Press".to_string();
-                *color = PRESSED_BUTTON.into();
+                *color = const_file::PRESSED_BUTTON.into();
                 handle.spawn(async move { get_latest().await });
-                println!("salut");
             }
             Interaction::Hovered => {
                 text.sections[0].value = "Hover".to_string();
@@ -76,6 +62,7 @@ fn button_system(
 }
 
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
+    // ui camera
     commands.spawn_bundle(Camera2dBundle::default());
     commands
         .spawn_bundle(ButtonBundle {
