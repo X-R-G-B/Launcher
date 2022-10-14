@@ -42,7 +42,14 @@ fn button_system(
     handle: ResMut<tokio::runtime::Handle>,
 ) {
     for (interaction, mut color, children) in &mut interaction_query {
-        let mut text = text_query.get_mut(children[0]).unwrap();
+        let mut text = match text_query.get_mut(children[0]) {
+            Ok(text) => {
+                text
+            },
+            Err(_) => {
+                return;
+            },
+        };
         match *interaction {
             Interaction::Clicked => {
                 text.sections[0].value = "Press".to_string();
