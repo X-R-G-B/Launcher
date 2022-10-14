@@ -8,10 +8,10 @@ use octocrab::{models::repos::Release, Error};
 
 struct ButtonDownload;
 
-#[derive(Component)]
+#[derive(Component, Debug)]
 pub struct GithubReleaseDownloader;
 
-#[derive(Component)]
+#[derive(Component, Debug)]
 pub struct GithubReleaseResult(Task<Result<Release, Error>>);
 
 impl Plugin for ButtonDownload {
@@ -19,15 +19,14 @@ impl Plugin for ButtonDownload {
 }
 
 async fn get_latest() -> Result<Release, Error> {
-    println!("Request API");
+    dbg!("Request API : ");
     let octo_inst = octocrab::instance();
-    println!("Crash into call instance octocrab");
     let releases = octo_inst
         .repos("X-R-G-B", "Artena")
         .releases()
         .get_latest()
         .await?;
-    println!("{:?}", releases);
+    dbg!(&releases);
     Ok(releases)
 }
 
