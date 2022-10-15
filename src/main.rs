@@ -19,14 +19,13 @@ impl Plugin for ButtonDownload {
 }
 
 async fn get_latest() -> Result<Release, Error> {
-    dbg!("Request API : ");
     let octo_inst = octocrab::instance();
     let releases = octo_inst
         .repos("X-R-G-B", "Artena")
         .releases()
         .get_latest()
         .await?;
-    dbg!(&releases);
+    dbg!("Request API : SUCCESS");
     Ok(releases)
 }
 
