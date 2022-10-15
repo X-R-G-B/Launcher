@@ -1,55 +1,110 @@
-#![allow(clippy::too_many_arguments, clippy::type_complexity)]
+pub mod const_file;
 
-use bevy::prelude::*;
+use const_file::*;
 
-#[derive(Component)]
-struct Person;
+use bevy::{prelude::*, tasks::Task, winit::WinitSettings};
 
-#[derive(Component)]
-struct Name(String);
+use octocrab::{models::repos::Release, Error};
 
-#[derive(Component)]
-struct FirstName(String);
+struct ButtonDownload;
 
-fn add_people(mut commands: Commands) {
-    commands
-        .spawn()
-        .insert(Person)
-        .insert(Name("Elaina Proctor".to_string()))
-        .insert(FirstName("Proctor".to_string()));
-    commands
-        .spawn()
-        .insert(Person)
-        .insert(Name("Renzo Hume".to_string()))
-        .insert(FirstName("Hume".to_string()));
-    commands
-        .spawn()
-        .insert(Person)
-        .insert(FirstName("Nieve".to_string()))
-        .insert(Name("Zayna Nieves".to_string()));
-    commands
-        .spawn()
-        .insert(Person)
-        .insert(FirstName("ABC".to_string()));
+#[derive(Component, Debug)]
+pub struct GithubReleaseDownloader;
+
+#[derive(Component, Debug)]
+pub struct GithubReleaseResult(Task<Result<Release, Error>>);
+
+impl Plugin for ButtonDownload {
+    fn build(&self, _app: &mut App) {}
 }
 
-fn greet_people(query: Query<&FirstName, With<Name>>) {
-    for firstname in query.iter() {
-        println!("hello {}!", firstname.0);
+async fn get_latest() -> Result<Release, Error> {
+    let octo_inst = octocrab::instance();
+    let releases = octo_inst
+        .repos("X-R-G-B", "Artena")
+        .releases()
+        .get_latest()
+        .await?;
+    dbg!("Request API : SUCCESS");
+    Ok(releases)
+}
+
+fn button_system(
+    mut interaction_query: Query<
+        '_,
+        '_,
+        (&Interaction, &mut UiColor, &Children),
+        (Changed<Interaction>, With<Button>),
+    >,
+    mut text_query: Query<'_, '_, &mut Text>,
+    handle: ResMut<tokio::runtime::Handle>,
+) {
+    for (interaction, mut color, children) in &mut interaction_query {
+        let mut text = match text_query.get_mut(children[0]) {
+            Ok(text) => {
+                text
+            },
+            Err(_) => {
+                return;
+            },
+        };
+        match *interaction {
+            Interaction::Clicked => {
+                text.sections[0].value = "Press".to_string();
+                *color = const_file::PRESSED_BUTTON.into();
+                handle.spawn(async move { get_latest().await });
+            }
+            Interaction::Hovered => {
+                text.sections[0].value = "Hover".to_string();
+                *color = HOVERED_BUTTON.into();
+            }
+            Interaction::None => {
+                text.sections[0].value = "Button".to_string();
+                *color = NORMAL_BUTTON.into();
+            }
+        }
     }
 }
 
-pub struct HelloPlugin;
-
-impl Plugin for HelloPlugin {
-    fn build(&self, app: &mut App) {
-        app.add_startup_system(add_people).add_system(greet_people);
-    }
+fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
+    // ui camera
+    commands.spawn_bundle(Camera2dBundle::default());
+    commands
+        .spawn_bundle(ButtonBundle {
+            style: Style {
+                size: Size::new(Val::Px(150.0), Val::Px(65.0)),
+                // center button
+                margin: UiRect::all(Val::Auto),
+                // horizontally center child text
+                justify_content: JustifyContent::Center,
+                // vertically center child text
+                align_items: AlignItems::Center,
+                ..default()
+            },
+            color: NORMAL_BUTTON.into(),
+            ..default()
+        })
+        .with_children(|parent| {
+            parent.spawn_bundle(TextBundle::from_section(
+                "Button",
+                TextStyle {
+                    font: asset_server.load(TEXT_BUTTON_FONT),
+                    font_size: 40.0,
+                    color: TEXT_BUTTON_COLOR,
+                },
+            ));
+        });
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
+    let handle = tokio::runtime::Handle::current();
     App::new()
         .add_plugins(DefaultPlugins)
-        .add_plugin(HelloPlugin)
+        // Only run the app when there is user input. This will significantly reduce CPU/GPU use.
+        .insert_resource(WinitSettings::desktop_app())
+        .insert_resource(handle)
+        .add_startup_system(setup)
+        .add_system(button_system)
         .run();
 }
