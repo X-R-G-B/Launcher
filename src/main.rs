@@ -1,6 +1,8 @@
 pub mod const_file;
+pub mod download_release;
 
 use const_file::*;
+use download_release::*;
 
 use bevy::{prelude::*, tasks::Task, winit::WinitSettings};
 
@@ -16,17 +18,6 @@ pub struct GithubReleaseResult(Task<Result<Release, Error>>);
 
 impl Plugin for ButtonDownload {
     fn build(&self, _app: &mut App) {}
-}
-
-async fn get_latest() -> Result<Release, Error> {
-    let octo_inst = octocrab::instance();
-    let releases = octo_inst
-        .repos("X-R-G-B", "Artena")
-        .releases()
-        .get_latest()
-        .await?;
-    dbg!("Request API : SUCCESS");
-    Ok(releases)
 }
 
 fn button_system(
@@ -52,7 +43,7 @@ fn button_system(
             Interaction::Clicked => {
                 text.sections[0].value = "Press".to_string();
                 *color = const_file::PRESSED_BUTTON.into();
-                handle.spawn(async move { get_latest().await });
+                handle.spawn(async move { download_release().await });
             }
             Interaction::Hovered => {
                 text.sections[0].value = "Hover".to_string();
